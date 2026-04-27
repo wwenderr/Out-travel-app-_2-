@@ -416,19 +416,27 @@ public struct ManagePlacePhotosSheet: View {
 public struct VisitedCityAnnotation: Identifiable, Hashable {
     public let id = UUID()
     public let name: String
+    public let latitude: Double
+    public let longitude: Double
+
     #if canImport(MapKit)
-    public let coordinate: CLLocationCoordinate2D
+    public var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
     #endif
 
     #if canImport(MapKit)
     public init(name: String, coordinate: CLLocationCoordinate2D) {
         self.name = name
-        self.coordinate = coordinate
-    }
-    #else
-    public init(name: String) {
-        self.name = name
+        self.latitude = coordinate.latitude
+        self.longitude = coordinate.longitude
     }
     #endif
+
+    public init(name: String, latitude: Double, longitude: Double) {
+        self.name = name
+        self.latitude = latitude
+        self.longitude = longitude
+    }
 }
 #endif

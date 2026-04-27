@@ -54,9 +54,11 @@ public struct NewPlaceInput: Hashable {
 
 public enum OutTravelStoreError: Error, Equatable {
     case cityNotFound
+    case placeNotFound
     case invalidTripDates
     case emptyPlaceTitle
     case invalidRating
+    case duplicatePhoto
 }
 
 public final class OutTravelStore {
@@ -126,5 +128,33 @@ public final class OutTravelStore {
         )
         places.append(place)
         return place
+    }
+
+    @discardableResult
+    public func addPhotoURL(_ url: String, toPlace placeId: UUID) throws -> Place {
+        guard let index = places.firstIndex(where: { $0.id == placeId }) else {
+            throw OutTravelStoreError.placeNotFound
+        }
+
+        let normalized = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            return places[index]
+        }
+        guard !places[index].photoURLs.contains(normalized) else {
+            throw OutTravelStoreError.duplicatePhoto
+        }
+
+        places[index].photoURLs.append(normalized)
+        return places[index]
+    }
+
+    @discardableResult
+    public func removePhotoURL(_ url: String, fromPlace placeId: UUID) throws -> Place {
+        guard let index = places.firstIndex(where: { $0.id == placeId }) else {
+            throw OutTravelStoreError.placeNotFound
+        }
+
+        places[index].photoURLs.removeAll { $0 == url }
+        return places[index]
     }
 }

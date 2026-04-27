@@ -77,6 +77,65 @@ final class OutTravelCoreTests: XCTestCase {
         XCTAssertEqual(vm.filteredVisitedCities(query: "ro").map(\.name), ["Rome"])
     }
 
+    func testStageOneViewModelBuildsGuideSections() throws {
+        let country = Country(id: UUID(), name: "Portugal", isoCode: "PT")
+        let lisbon = City(id: UUID(), name: "Lisbon", countryId: country.id, latitude: 38.7223, longitude: -9.1393)
+        let store = OutTravelStore(countries: [country], cities: [lisbon])
+        var vm = StageOneViewModel(store: store)
+
+        _ = try vm.addPlace(NewPlaceInput(
+            cityId: lisbon.id,
+            title: "Belem Tower",
+            description: "Landmark",
+            category: "Sight",
+            latitude: lisbon.latitude,
+            longitude: lisbon.longitude,
+            rating: 5
+        ))
+
+        XCTAssertEqual(vm.guideSections.count, 1)
+        XCTAssertEqual(vm.guideSections.first?.city.name, "Lisbon")
+        XCTAssertEqual(vm.guideSections.first?.places.first?.title, "Belem Tower")
+    }
+
+
+    func testStoreCanAttachAndRemovePhotoURLs() throws {
+        let country = Country(id: UUID(), name: "France", isoCode: "FR")
+        let city = City(id: UUID(), name: "Paris", countryId: country.id, latitude: 48.8566, longitude: 2.3522)
+        let store = OutTravelStore(countries: [country], cities: [city])
+
+        let place = try store.addPlace(NewPlaceInput(
+            cityId: city.id,
+            title: "Eiffel",
+            description: "Tower",
+            category: "Sight",
+            latitude: city.latitude,
+            longitude: city.longitude
+        ))
+
+        let updated = try store.addPhotoURL("https://example.com/photo.jpg", toPlace: place.id)
+        XCTAssertEqual(updated.photoURLs.count, 1)
+
+        XCTAssertThrowsError(try store.addPhotoURL("https://example.com/photo.jpg", toPlace: place.id)) { error in
+            XCTAssertEqual(error as? OutTravelStoreError, .duplicatePhoto)
+        }
+
+        let cleaned = try store.removePhotoURL("https://example.com/photo.jpg", fromPlace: place.id)
+        XCTAssertEqual(cleaned.photoURLs.count, 0)
+    }
+
+    func testPhotoLibraryServiceSavesAndDeletesFiles() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("outtravel_test_\(UUID().uuidString)")
+        let service = PhotoLibraryService(baseDirectory: dir)
+
+        let urlString = try service.savePhoto(data: Data([0x01, 0x02, 0x03]), suggestedExtension: "bin")
+        let fileURL = try XCTUnwrap(URL(string: urlString))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+
+        try service.deletePhoto(urlString: urlString)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
     func testAppTabsAreDefinedForMVP() {
         XCTAssertEqual(AppTab.allCases, [.stats, .map, .cities, .guides])
     }
